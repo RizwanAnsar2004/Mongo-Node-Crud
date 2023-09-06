@@ -1,109 +1,89 @@
-// IMPORTING THE MONGO CLIENT
-const {MongoClient} = require("mongodb");
 
-// SAVING CONNECTION STRING OF DATABASE
+const express = require("express");
+
+const Client = require("mongodb").MongoClient;
+
 const ConnectionString = "mongodb://127.0.0.1:27017";
 
-// PASSING THE CONNECTION STRING TO MONGOCLIENT
-const Client = new MongoClient(ConnectionString);
+const client = new Client(ConnectionString);
 
-// const http = require('http');
+const app = express();
 
-// --------------------------------------------------------------------------------------------
+app.use(express.json());
 
-// FUNCTION TO GET ALL DOCUMENTS IN THE COLLECTION OF DATABASE
-const get=async function() {
+client
+  .connect()
+  .then((res) => {
+    console.log("SUCCESSFULLY CONNECTED TO DATABASE");
+  })
+  .catch((err) => {
+    console.log("AN ERROR OCCURED WHILE CONNECTING TO db" + err);
+  });
+
+const db = "nodeDB";
+const collection = "Students";
+
+app.get("/get", async (req, res) => {
   try {
-    // PROMISE TO CONNECT THE DATABASE
-    await Client.connect();
-    console.log("Successfully formed connection with database");
-
-    // GETTING COLLECTION IN VARAIABLE
-    const DB = Client.db("nodeDB");
-
-    // ALSO GETTING THE COLLECTION OF DATABASE
-    var collection = DB.collection("Students");
-
-    // FUNCTION TO GET ALL RECORDS
-    const documents = await collection.find({}).toArray();
-
-    // PRINTING ALL DOCUMENTS IN THE COLLECTION
+    const DB = client.db(db);
+    const table = DB.collection(collection);
+    const documents = await table.find({}).toArray();
+    res.json(documents);
     console.log(documents);
-    } catch (error) {
-        console.log("An Error occured while Connection with DB");
-    }
-}
-// ---------------------------------------------------------------------------
-    // ___________
-    // ___________      ||======          ||         ||       || =  =
-    // ||               ||       =        ||         ||       ||       =
-    // ||               ||        =       ||         ||       ||         =
-    // ||               ||       =        ||         ||       ||          =
-    // ||               || =  =  =        ||         ||       ||         =
-    // ||               ||\\              ||         ||       ||        =
-    // -----------      ||  \\            ||         ||       ||     =
-    // -----------      ||   \\             ==========        ||  =
-// ---------------------------------------------------------------------------
+  } catch (error) {
+    console.log("AN ERROR OCCURED WHILE GETTING THE DATA" + error);
+  }
+});
 
-const insert=async function(){
-    try{
-        await Client.connect();
+app.put("/put",async (req,res)=>{
+  try{
+    const DB=client.db(db);
+    const table=DB.collection(collection);
+    await table.updateOne({name:req.body.name},{$set:{enrollment:req.body.enrollment}})
+    .then(()=>{
+      res.json({message:"RECORD UPDATED SUCCESSFULLY"});
+    }).catch((error)=>{
+      res.json({message:error});
+    });
+  }
+  catch(error){
+    res.json({message:"AN ERROR OCCURED WHILE CONNECTING TO DB"});
+  }
+});
 
-        console.log("CONNECTION ESTABLISHED SUCCESSFULLY");
+app.post("/post", async (req, res) => {
+  try {
+    const DB = client.db(db);
+    const table = DB.collection(collection);
 
-        const DB=Client.db("nodeDB");
+    await table
+      .insertOne(req.body)
+      .then(() => {
+        res.json({ message: "DATA INSERTED SUCCESSFULLY" });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  } catch (error) {
+    res.status(500).json({ message: "DATA insertion failed" });
+  }
+});
 
-        const collection=DB.collection("Students");
+app.delete("/delete", async (req, res) => {
+  try {
+    const DB = client.db(db);
+    const table = DB.collection(collection);
+    await table.deleteOne({ name: req.body.name }).then(()=>{
+      res.json({ message: "DATA DELETED SUCCESSFULLY" });
+    })
+    .catch((error)=>{
+      res.json(error);
+    });  
+  } catch (error) {
+    res.json({ message: "AN ERROR OCCUREED WHILE DELETION" });
+  }
+});
 
-        const documents=await collection.insertOne({stId:1,name:"rizwan",class:"BSE-2b",enrollment:18});
-
-        console.log("RECORD INSERTED SUCCESSFULLY");
-    }
-    catch(error){
-        console.log("An error occured while connecting "+error);
-    }
-}
-
-async function update(){
-    try{
-        await Client.connect();
-
-        console.log("CONNECTION ESTABLISHED SUCCESSFULLY");
-
-        const DB=Client.db("nodeDB");
-
-        const collection=DB.collection("Students");
-
-        const documents=await collection.updateOne({stId:1},{$set:{enrollment:21}});
-
-        console.log("RECORD UPDATED SUCCESSFULLY");
-
-    }
-    catch(error){
-        console.log("An Error occured while connecting "+error);
-    }
-}
-
-async function deleteRecord(){
-    try{
-
-        await Client.connect();
-
-        console.log("Connection established Successfully");
-
-        const DB=Client.db("nodeDB");
-
-        const collection=DB.collection("Students");
-
-        const documents=await collection.deleteOne({stId:1});
-
-        console.log("RECORD DELETE SUCCESSFULLY");
-
-    }
-    catch(error){
-        console.log("An Error occured while connecting "+error);
-    }
-}
-
-get();
-
+app.listen(3000, () => {
+  console.log("SERVER IS LIVE AT 3000");
+});
